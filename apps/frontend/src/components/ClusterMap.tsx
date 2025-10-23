@@ -3,6 +3,10 @@ import Map, { Source, Layer } from 'react-map-gl/maplibre';
 import type { CircleLayerSpecification, SymbolLayerSpecification } from 'maplibre-gl';
 import type { FeatureCollection, Feature, Point } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import MAP_STYLE from '../../public/map-style-basic-v8.json';
+import {fromJS} from 'immutable';
+const defaultMapStyle: any = fromJS(MAP_STYLE);
+
 
 // Generate points in specific regions
 const generatePoints = (): Feature<Point>[] => {
@@ -140,8 +144,10 @@ function ClusterMap() {
             <Map
                 {...viewState}
                 onMove={(evt) => setViewState(evt.viewState)}
-                mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+                mapStyle={defaultMapStyle}
                 style={{ width: '100%', height: '100%' }}
+                minZoom={1.75}
+                maxZoom={6.5}
             >
                 <Source
                     id="points"
