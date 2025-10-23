@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Map, { Source, Layer } from 'react-map-gl/maplibre';
 import type { CircleLayerSpecification, SymbolLayerSpecification } from 'maplibre-gl';
 import type { FeatureCollection, Feature, Point } from 'geojson';
@@ -126,11 +126,11 @@ function ClusterMap() {
         zoom: 2.5 // Zoom out to see both continents
     });
 
-    // Generate data inside component to ensure it's fresh
-    const geojsonData: FeatureCollection<Point> = {
+    // Generate data only once using useMemo
+    const geojsonData: FeatureCollection<Point> = useMemo(() => ({
         type: 'FeatureCollection',
         features: generatePoints()
-    };
+    }), []); // Empty dependency array means this only runs once
 
     console.log('GeoJSON data:', geojsonData);
     console.log('Number of points:', geojsonData.features.length);
