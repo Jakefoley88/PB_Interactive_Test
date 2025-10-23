@@ -1,13 +1,11 @@
-import {Archive, CodeXml, House} from 'lucide-react';
 import Navbar from "../components/Navbar";
+import ClusterMap from "../components/ClusterMap";
 
 function LandingPage() {
     return (
         <>
             <Navbar />
-            <div className="text-white bg-gray-800">
-                <p>Hello</p>
-            </div>
+            <ClusterMap />
         </>
     );
 }
