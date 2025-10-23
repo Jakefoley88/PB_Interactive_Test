@@ -126,6 +126,8 @@ function ClusterMap() {
         zoom: 2.5 // Zoom out to see both continents
     });
 
+    const [selectedPoint, setSelectedPoint] = useState<any>(null);
+
     // Generate data only once using useMemo
     const geojsonData: FeatureCollection<Point> = useMemo(() => ({
         type: 'FeatureCollection',
@@ -135,13 +137,25 @@ function ClusterMap() {
     console.log('GeoJSON data:', geojsonData);
     console.log('Number of points:', geojsonData.features.length);
 
+    // Handle clicks on the map
+    const onClick = (event: any) => {
+        const feature = event.features?.[0];
+        if (feature) {
+            console.log('Clicked feature:', feature);
+            setSelectedPoint(feature.properties);
+        }
+    };
+
     return (
         <div style={{ width: '100%', height: '100vh' }}>
             <Map
                 {...viewState}
                 onMove={(evt) => setViewState(evt.viewState)}
+                onClick={onClick}
+                interactiveLayerIds={['clusters', 'unclustered-point']}
                 mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
                 style={{ width: '100%', height: '100%' }}
+                cursor="pointer"
             >
                 <Source
                     id="points"
@@ -156,6 +170,46 @@ function ClusterMap() {
                     <Layer {...unclusteredPointLayer} />
                 </Source>
             </Map>
+
+            {/* Info box to show selected point */}
+            {selectedPoint && (
+                <div style={{
+                    position: 'absolute',
+                    top: 20,
+                    left: 20,
+                    background: 'white',
+                    padding: '15px 20px',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    zIndex: 1,
+                    maxWidth: '300px'
+                }}>
+                    <button
+                        onClick={() => setSelectedPoint(null)}
+                        style={{
+                            position: 'absolute',
+                            top: '5px',
+                            right: '5px',
+                            border: 'none',
+                            background: 'transparent',
+                            fontSize: '18px',
+                            cursor: 'pointer',
+                            padding: '5px'
+                        }}
+                    >
+                        ×
+                    </button>
+                    <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>Point Details</h3>
+                    <p style={{ margin: '5px 0' }}><strong>Name:</strong> {selectedPoint.name}</p>
+                    <p style={{ margin: '5px 0' }}><strong>Region:</strong> {selectedPoint.region}</p>
+                    <p style={{ margin: '5px 0' }}><strong>ID:</strong> {selectedPoint.id}</p>
+                    {selectedPoint.point_count && (
+                        <p style={{ margin: '5px 0' }}>
+                            <strong>Cluster:</strong> {selectedPoint.point_count} points
+                        </p>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
