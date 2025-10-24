@@ -13,6 +13,11 @@ export default {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		colors: {
+  			'pb-light-gray': 'var(--pb-light-gray)',
+  			'pb-gray': 'var(--pb-gray)',
+  			'pb-mustard': 'var(--pb-mustard)',
+  			'pb-ketchup': 'var(--pb-ketchup)',
+  			'pb-indigo': 'var(--pb-indigo)',
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {

@@ -53,6 +53,12 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --pb-light-gray: #efeff2;
+    --pb-gray: #9e9ea9;
+    --pb-mustard: #c49949;
+    --pb-ketchup: #be013c;
+    --pb-indigo: #322283;
   }
   .dark {
     --background: 0 0% 3.9%;

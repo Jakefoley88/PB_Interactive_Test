@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import Map, { Source, Layer } from 'react-map-gl/maplibre';
 import type { CircleLayerSpecification, SymbolLayerSpecification } from 'maplibre-gl';
 import type { FeatureCollection, Feature, Point } from 'geojson';
+import type { MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MAP_STYLE from '../../public/map-style-basic-v8.json';
 import {fromJS} from 'immutable';
@@ -17,6 +18,7 @@ const generatePoints = (): Feature<Point>[] => {
     for (let i = 0; i < 40; i++) {
         points.push({
             type: 'Feature',
+            id: id,  // Feature-level ID for feature-state
             properties: {
                 id: id++,
                 name: `California Point ${i}`,
@@ -36,6 +38,7 @@ const generatePoints = (): Feature<Point>[] => {
     for (let i = 0; i < 40; i++) {
         points.push({
             type: 'Feature',
+            id: id,  // Feature-level ID for feature-state
             properties: {
                 id: id++,
                 name: `Massachusetts Point ${i}`,
@@ -55,6 +58,7 @@ const generatePoints = (): Feature<Point>[] => {
     for (let i = 0; i < 50; i++) {
         points.push({
             type: 'Feature',
+            id: id,  // Feature-level ID for feature-state
             properties: {
                 id: id++,
                 name: `Europe Point ${i}`,
@@ -82,21 +86,47 @@ const clusterLayer: Omit<CircleLayerSpecification, 'source'> = {
         'circle-color': [
             'step',
             ['get', 'point_count'],
-            '#51bbd6',
+            '#d4b574',  // Light mustard for small clusters
             10,
-            '#f1f075',
+            '#c49949',  // pb-mustard for medium clusters
             30,
-            '#f28cb1'
+            '#be013c'   // pb-ketchup for large clusters
         ],
         'circle-radius': [
-            'step',
-            ['get', 'point_count'],
-            20,
-            10,
-            30,
-            30,
-            40
-        ]
+            'case',
+            ['boolean', ['feature-state', 'hover'], false],
+            // When hovered, multiply the base radius by 1.3 (30% larger)
+            [
+                '*',
+                [
+                    'step',
+                    ['get', 'point_count'],
+                    20,
+                    10,
+                    25,
+                    30,
+                    30
+                ],
+                1.3
+            ],
+            // Normal radius
+            [
+                'step',
+                ['get', 'point_count'],
+                20,
+                10,
+                25,
+                30,
+                30
+            ]
+        ],
+        'circle-stroke-width': [
+            'case',
+            ['boolean', ['feature-state', 'hover'], false],
+            3,  // Thicker border when hovered
+            2
+        ],
+        'circle-stroke-color': '#322283'  // pb-indigo border
     }
 };
 
@@ -107,7 +137,15 @@ const clusterCountLayer: Omit<SymbolLayerSpecification, 'source'> = {
     layout: {
         'text-field': ['get', 'point_count_abbreviated'],
         'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
-        'text-size': 12
+        'text-size': [
+            'step',
+            ['get', 'point_count'],
+            16,
+            10,
+            18,
+            30,
+            22
+        ]
     }
 };
 
@@ -116,19 +154,31 @@ const unclusteredPointLayer: Omit<CircleLayerSpecification, 'source'> = {
     type: 'circle',
     filter: ['!', ['has', 'point_count']],
     paint: {
-        'circle-color': '#11b4da',
-        'circle-radius': 8,
-        'circle-stroke-width': 1,
-        'circle-stroke-color': '#fff'
+        'circle-color': '#9e9ea9',  // pb-gray
+        'circle-radius': [
+            'case',
+            ['boolean', ['feature-state', 'hover'], false],
+            10,  // 25% larger when hovered
+            8
+        ],
+        'circle-stroke-width': [
+            'case',
+            ['boolean', ['feature-state', 'hover'], false],
+            3,  // Thicker border when hovered
+            2
+        ],
+        'circle-stroke-color': '#322283'  // pb-indigo border
     }
 };
 
 function ClusterMap() {
+    const mapRef = useRef<MapRef>(null);
     const [viewState, setViewState] = useState({
         longitude: -30, // Center between US and Europe
         latitude: 45,
         zoom: 2.5 // Zoom out to see both continents
     });
+    const [hoveredFeatureId, setHoveredFeatureId] = useState<string | number | null>(null);
 
     // Generate data only once using useMemo
     const geojsonData: FeatureCollection<Point> = useMemo(() => ({
@@ -139,15 +189,65 @@ function ClusterMap() {
     console.log('GeoJSON data:', geojsonData);
     console.log('Number of points:', geojsonData.features.length);
 
+    const onMouseMove = (event: any) => {
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+
+        const features = map.queryRenderedFeatures(event.point, {
+            layers: ['clusters', 'unclustered-point']
+        });
+
+        if (features.length > 0) {
+            const feature = features[0];
+            if (hoveredFeatureId !== null) {
+                map.setFeatureState(
+                    { source: 'points', id: hoveredFeatureId },
+                    { hover: false }
+                );
+            }
+            setHoveredFeatureId(feature.id as string | number);
+            map.setFeatureState(
+                { source: 'points', id: feature.id },
+                { hover: true }
+            );
+            map.getCanvas().style.cursor = 'pointer';
+        } else {
+            if (hoveredFeatureId !== null) {
+                map.setFeatureState(
+                    { source: 'points', id: hoveredFeatureId },
+                    { hover: false }
+                );
+                setHoveredFeatureId(null);
+            }
+            map.getCanvas().style.cursor = '';
+        }
+    };
+
+    const onMouseLeave = () => {
+        const map = mapRef.current?.getMap();
+        if (!map || hoveredFeatureId === null) return;
+
+        map.setFeatureState(
+            { source: 'points', id: hoveredFeatureId },
+            { hover: false }
+        );
+        setHoveredFeatureId(null);
+        map.getCanvas().style.cursor = '';
+    };
+
     return (
         <div style={{ width: '100%', height: '100vh' }}>
             <Map
+                ref={mapRef}
                 {...viewState}
                 onMove={(evt) => setViewState(evt.viewState)}
+                onMouseMove={onMouseMove}
+                onMouseLeave={onMouseLeave}
                 mapStyle={defaultMapStyle}
                 style={{ width: '100%', height: '100%' }}
                 minZoom={1.75}
                 maxZoom={6.5}
+                interactiveLayerIds={['clusters', 'unclustered-point']}
             >
                 <Source
                     id="points"
